@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>海賊語 翻訳機</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  .bobbing { animation: bob 2s ease-in-out infinite; }
+</style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4">
+<div class="max-w-2xl mx-auto">
+  <div class="text-center mb-6">
+    <div class="text-5xl bobbing inline-block">🏴‍☠️</div>
+    <h1 class="text-2xl font-bold text-yellow-400 mt-2">海賊語 翻訳機</h1>
+    <p class="text-gray-400 text-sm">国際海賊の日 特別版 ― Speak like a pirate!</p>
+  </div>
+
+  <!-- Translator -->
+  <div class="bg-gray-800 rounded-lg p-4 mb-4">
+    <div class="mb-3">
+      <label for="inputText" class="block text-sm text-gray-400 mb-1">英語テキストを入力</label>
+      <textarea id="inputText" rows="4"
+        class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white resize-none focus:outline-none focus:border-yellow-500"
+        placeholder="Type English here... (e.g. Hello my friend, how are you?)"
+        aria-label="英語入力テキスト"></textarea>
+    </div>
+    <div class="flex gap-2 mb-3">
+      <button id="translateBtn"
+        class="flex-1 py-2 bg-yellow-600 hover:bg-yellow-500 rounded font-bold transition-all"
+        aria-label="海賊語に翻訳">⚓ 海賊語に翻訳!</button>
+      <button id="clearBtn"
+        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        aria-label="テキストをクリア">クリア</button>
+    </div>
+    <div class="mb-1 text-sm text-gray-400">海賊語訳</div>
+    <div id="output"
+      class="bg-gray-900 border border-yellow-800 rounded p-3 min-h-[80px] text-yellow-300 font-mono text-sm leading-relaxed whitespace-pre-wrap"></div>
+    <button id="copyBtn"
+      class="mt-2 px-4 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs"
+      aria-label="海賊語テキストをコピー">📋 コピー</button>
+    <span id="copyMsg" class="ml-2 text-xs text-green-400 hidden">コピーしました!</span>
+  </div>
+
+  <!-- Pirate Name Generator -->
+  <div class="bg-gray-800 rounded-lg p-4 mb-4">
+    <div class="text-sm text-gray-400 mb-2">🔱 海賊名ジェネレーター</div>
+    <div class="flex gap-2 items-center">
+      <div id="pirateName" class="flex-1 bg-gray-700 rounded px-3 py-2 text-yellow-300 font-bold text-lg min-h-[2.5rem]"></div>
+      <button id="genNameBtn"
+        class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded font-bold text-sm"
+        aria-label="海賊名を生成">⚔️ 生成</button>
+    </div>
+  </div>
+
+  <!-- Example Sentences -->
+  <div class="bg-gray-800 rounded-lg p-4 mb-4">
+    <div class="text-sm text-gray-400 mb-3">📜 例文コレクション（クリックで挿入）</div>
+    <div id="examples" class="flex flex-wrap gap-2"></div>
+  </div>
+
+  <!-- Dictionary Preview -->
+  <div class="bg-gray-800 rounded-lg p-4">
+    <div class="text-sm text-gray-400 mb-3">📖 変換辞書（一部）</div>
+    <div id="dictPreview" class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs"></div>
+  </div>
+</div>
+
+<script>
+const DICT = {
+  'you': 'ye', "you're": "ye be", "you've": "ye've", "you'll": "ye'll",
+  'your': 'yer', 'yours': 'yers',
+  'is': 'be', 'are': 'be', 'am': 'be',
+  'was': 'were', 'were': 'be',
+  'my': 'me', 'mine': 'mine own',
+  'friend': 'matey', 'friends': 'mateys', 'buddy': 'matey', 'companions': 'crew',
+  'yes': 'aye', 'yeah': 'aye', 'yep': 'aye',
+  'no': 'nay', 'not': "nay",
+  'hello': 'ahoy', 'hi': 'ahoy', 'hey': 'ahoy',
+  'goodbye': 'fare thee well', 'bye': 'fare thee well', 'see you': 'till we meet again',
+  'okay': 'aye aye', 'ok': 'aye aye', 'alright': 'right then',
+  'the': "th'", 'of': "o'",
+  'i': 'I', "i'm": "I be", "i've": "I've", "i'll": "I'll", "i'd": "I'd",
+  'food': 'grub', 'eat': 'feast', 'eating': 'feastin', 'meal': 'grub',
+  'house': 'quarters', 'home': 'port', 'room': 'quarters',
+  'man': 'swab', 'men': 'swabs', 'guy': 'bilge rat', 'guys': 'bilge rats',
+  'woman': 'lass', 'girl': 'lass', 'ladies': 'lasses',
+  'boat': 'vessel', 'ship': 'vessel', 'car': 'carriage',
+  'money': 'doubloons', 'treasure': 'plunder', 'gold': 'doubloons',
+  'great': 'grand', 'good': 'fine', 'awesome': 'grand as the seven seas', 'cool': 'shipshape',
+  'bad': 'foul', 'terrible': 'blimey terrible', 'awful': 'blimey awful',
+  'very': 'mighty', 'really': 'truly', 'so': 'so',
+  'find': 'seek', 'found': 'hath found', 'look': 'spy',
+  'go': 'set sail', 'going': 'sailin', 'went': 'sailed',
+  'come': 'hither', 'here': 'hither',
+  'fight': 'battle', 'fighting': 'battlin',
+  'know': 'ken', 'think': 'reckon', 'want': 'desire',
+  'tell': 'say', 'said': 'spoke', 'say': 'speak',
+  'old': 'ancient', 'new': 'newly crafted',
+  'big': 'mighty', 'small': 'wee',
+  'angry': 'in a foul temper', 'happy': 'jolly',
+  'tired': 'weary', 'afraid': 'lily-livered',
+  'the captain': 'the cap\'n', 'captain': "cap'n",
+  'treasure map': 'plunder chart', 'map': 'chart',
+};
+
+const INTERJECTIONS = ['Arr!', 'Yarr!', 'Blimey!', 'Avast!', 'Shiver me timbers!', 'By Davy Jones!', 'Ahoy matey!'];
+
+function translate(text) {
+  const injChance = 0.25;
+  let result = text;
+  // word-by-word replacement (case-insensitive, word boundary)
+  const sorted = Object.keys(DICT).sort((a,b) => b.length - a.length);
+  for (const key of sorted) {
+    const re = new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b', 'gi');
+    result = result.replace(re, (match) => {
+      const val = DICT[key];
+      // preserve capitalization
+      if (match[0] === match[0].toUpperCase()) return val.charAt(0).toUpperCase() + val.slice(1);
+      return val;
+    });
+  }
+  // Add interjections at sentence ends
+  result = result.replace(/([.!?])\s*/g, (match, punct) => {
+    if (Math.random() < injChance) {
+      const inj = INTERJECTIONS[Math.floor(Math.random() * INTERJECTIONS.length)];
+      return punct + ' ' + inj + ' ';
+    }
+    return match;
+  });
+  // Add trailing interjection if none added and text exists
+  if (result && !result.match(/Arr|Yarr|Blimey|Avast|Ahoy|Shiver|Davy/)) {
+    const inj = INTERJECTIONS[Math.floor(Math.random() * INTERJECTIONS.length)];
+    result = result.trim() + ' ' + inj;
+  }
+  return result;
+}
+
+document.getElementById('translateBtn').addEventListener('click', () => {
+  const input = document.getElementById('inputText').value;
+  if (!input.trim()) return;
+  const translated = translate(input);
+  document.getElementById('output').textContent = translated;
+});
+
+document.getElementById('inputText').addEventListener('input', () => {
+  const input = document.getElementById('inputText').value;
+  if (input.trim()) {
+    const translated = translate(input);
+    document.getElementById('output').textContent = translated;
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('inputText').value = '';
+  document.getElementById('output').textContent = '';
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const text = document.getElementById('output').textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 2000);
+  });
+});
+
+// Pirate Name Generator
+const ADJ = ['Bloody','Dread','Iron','Black','Silver','Crimson','Foul','Salty','Rusty','Cunning',
+  'Mad','Savage','Golden','Scarlet','Rotten','Fierce','Dark','Wicked','Storm','Jolly'];
+const NAMES = ['Blackbones','Doubloon','Cutlass','Barnacle','Skull','Drake','Flint','Morgan','Hook','Bones',
+  'Dagger','Hornswaggle','Bilge','Scurvy','Cannon','Pistol','Typhoon','Anchor','Grog','Marrow'];
+
+document.getElementById('genNameBtn').addEventListener('click', () => {
+  const adj = ADJ[Math.floor(Math.random() * ADJ.length)];
+  const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+  document.getElementById('pirateName').textContent = `${adj} ${name}`;
+});
+
+// Examples
+const EXAMPLES = [
+  { label: '挨拶', text: 'Hello my friend, how are you today?' },
+  { label: '宝探し', text: 'I found the treasure map. We need to go to the ship!' },
+  { label: '海賊宣言', text: 'I am the captain of this vessel. You are all my crew now!' },
+  { label: '怒り', text: 'You terrible man! Give me the gold or I will fight you!' },
+  { label: '友情', text: 'Yes my friend, I am very happy to know you. Goodbye!' },
+  { label: '食事', text: 'I want to eat good food with my friends at home tonight.' },
+];
+
+const exDiv = document.getElementById('examples');
+EXAMPLES.forEach(ex => {
+  const btn = document.createElement('button');
+  btn.className = 'px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs border border-gray-600';
+  btn.setAttribute('aria-label', `例文「${ex.label}」を挿入`);
+  btn.textContent = ex.label;
+  btn.addEventListener('click', () => {
+    document.getElementById('inputText').value = ex.text;
+    document.getElementById('output').textContent = translate(ex.text);
+  });
+  exDiv.appendChild(btn);
+});
+
+// Dict preview
+const dictDiv = document.getElementById('dictPreview');
+const preview = Object.entries(DICT).slice(0, 24);
+preview.forEach(([k, v]) => {
+  const d = document.createElement('div');
+  d.className = 'bg-gray-700 rounded p-1 text-center';
+  const kEl = document.createElement('div');
+  kEl.className = 'text-gray-300';
+  kEl.textContent = k;
+  const vEl = document.createElement('div');
+  vEl.className = 'text-yellow-300';
+  vEl.textContent = v;
+  d.appendChild(kEl);
+  d.appendChild(vEl);
+  dictDiv.appendChild(d);
+});
+
+// Gen initial name
+document.getElementById('genNameBtn').click();
+</script>
+</body>
+</html>
